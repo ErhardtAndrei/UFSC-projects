@@ -1,0 +1,51 @@
+#include<AccelStepper.h>
+#include<stdio.h>
+String command;
+//Pin definition
+#define motorPin1 8
+#define motorPin2 9
+#define motorPin3 10
+#define motorPin4 11
+#define Read_Voltage A3
+#define Read_Current A4
+
+int var = 1; 
+
+#define MotorInterfaceType 4
+
+AccelStepper stepper= AccelStepper(MotorInterfaceType, motorPin1, motorPin3, motorPin2, motorPin4);
+void setup() {
+
+// Start of serial communication
+Serial.begin(9600);
+ 
+// Set the maximum steps per second:
+  stepper.setMaxSpeed(800);
+  stepper.setAcceleration(800);
+  stepper.moveTo(4096);
+  Serial.println("\n Escolha: Sobe ou Desce \n");
+
+}
+
+void loop() {
+ 
+  if(Serial.available()){
+    command = Serial.readStringUntil('\n');
+    command.trim();
+    if(command.equals("S")){
+      for (var = 1; var < 10; var++) if(var == 10){break;}{ //define a quantidade de voltas
+      stepper.move(2048*(var)); //valor negativo pra girar no sentido horário
+      stepper.runToPosition();
+      Serial.println(var);
+      }
+    }
+  if(command.equals("D")){
+      for (var = 1; var < 10; var++) if(var == 10){break;}{ //define a quantidade de voltas
+      stepper.move(-2048*(var)); //valor negativo pra girar no sentido horário
+      stepper.runToPosition();
+      Serial.println(var);
+      }
+    }
+  }
+}
+    
