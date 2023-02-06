@@ -1,0 +1,160 @@
+# include <Servo.h>
+# include <LiquidCrystal.h>
+# define sensor0 A0
+# define sensor1 A1
+# define sensor2 A2
+# define sensor3 A3
+# define sensor4 A4
+# define sensor5 A5
+float distancia0 = 0.0, distancia1 = 0.0, distancia2 = 0.0, distancia3 = 0.0, distancia4 = 0.0, distancia5 = 0.0
+int vaga0, vaga1, vaga2, vaga3, vaga4, vaga5
+int alunos, servidores
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2)
+
+Servo servo1
+// Cria um Objeto servo chamado Servo1
+int posicao
+
+
+void setup(){
+    Serial.begin(9600)
+    lcd.begin(16, 2)
+    lcd.print("Servidores: ")
+
+    lcd.setCursor(0, 1)
+    lcd.print("Alunos    : ")
+
+    servo1.attach(9)
+}
+
+void loop(){
+    leitura()
+    distancia0 = funcaoCalcularDistancia(distancia0)
+    // calculo distancia sensor0
+    distancia1 = funcaoCalcularDistancia(distancia1)
+    // calculo distancia sensor1
+    distancia2 = funcaoCalcularDistancia(distancia2)
+    // calculo distancia sensor2
+    distancia3 = funcaoCalcularDistancia(distancia3)
+    // calculo distancia sensor3
+    distancia4 = funcaoCalcularDistancia(distancia4)
+    // calculo distancia sensor4
+    distancia5 = funcaoCalcularDistancia(distancia5)
+    // calculo distancia sensor5
+
+    // contador de vagas
+    if (distancia0 < 100){
+        vaga0 = 0
+    }
+    else vaga0 = 1
+    Serial.print("vaga0: ")
+    Serial.println(vaga0)
+    delay(5)
+
+    // vaga1
+    if (distancia1 < 100){
+        vaga1 = 0
+    }
+    else vaga1 = 1
+    Serial.print("vaga1: ")
+    Serial.println(vaga1)
+    delay(5)
+
+    // vaga2
+    if (distancia2 < 100){
+        vaga2 = 0
+    }
+    else vaga2 = 1
+    Serial.print("vaga2: ")
+    Serial.println(vaga2)
+    delay(5)
+
+    // vaga3
+    if (distancia3 < 100){
+        vaga3 = 0
+    }
+    else vaga3 = 1
+    Serial.print("vaga3: ")
+    Serial.println(vaga3)
+    delay(5)
+
+    // vaga4
+    if (distancia4 < 100){
+        vaga4 = 0
+    }
+    else vaga4 = 1
+    Serial.print("vaga4: ")
+    Serial.println(vaga4)
+    delay(5)
+
+    // vaga5
+    if (distancia5 < 100){
+        vaga5 = 0
+    }
+    else vaga5 = 1
+    Serial.print("vaga5: ")
+    Serial.println(vaga5)
+    delay(5)
+
+
+    // vagas disponíveis
+    alunos = vaga0 + vaga1 + vaga2
+    Serial.print("alunos: ")
+
+    Serial.println(alunos)
+    lcd.setCursor(11, 1)
+    lcd.print(alunos)
+    servidores = vaga3 + vaga4 + vaga5
+    Serial.print("Servidores: ")
+    Serial.println(servidores)
+    lcd.setCursor(11, 0)
+    lcd.print(servidores)
+
+    // //servomotor
+    if ((servidores + alunos) == 0){
+        posicao = 0
+        servo1.write(posicao)
+    }
+    else if ((servidores + alunos) != 0){
+        posicao = 90
+        servo1.write(posicao)
+    }
+
+}
+
+void leitura(){
+    distancia0 = funcaoLerSensor(sensor0)
+    // leitura sensor0
+    distancia1 = funcaoLerSensor(sensor1)
+    // leitura sensor1
+    distancia2 = funcaoLerSensor(sensor2)
+    // leitura sensor2
+    distancia3 = funcaoLerSensor(sensor3)
+    // leitura sensor3
+    distancia4 = funcaoLerSensor(sensor4)
+    // leitura sensor4
+    distancia5 = funcaoLerSensor(sensor5)
+    // leitura sensor5
+}
+float funcaoLerSensor(float aux){
+    float distancia = 0.0
+    pinMode(aux, OUTPUT)
+    // Define o pino como saida
+    digitalWrite(aux, HIGH)
+    // Manda um sinal de nível alto por 5 microssegundos
+    delayMicroseconds(5)
+    digitalWrite(aux, LOW)
+
+    pinMode(aux, INPUT)
+    // Define o pino como entrada para fazer a leitura
+    distancia = pulseIn(aux, HIGH)
+    // Le o comprimento de onda em alta
+    return distancia
+}
+float funcaoCalcularDistancia(float aux){
+    float distancia = aux
+    distancia = (distancia/2)*0.034029
+    // Divide por 2 pois esse e o tempo da onda ir e voltar e multiplicamos por 0, 034 por causa da velocidade do som(d=v*t)
+    return distancia
+}
