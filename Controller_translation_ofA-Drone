@@ -1,0 +1,148 @@
+close all
+%% Parâmetros iniciais do trabalho
+Jp = 72.8e-6;       % momento de inercia em torno das helices: Nms^2
+eta = 0.9;          % eficiencia das engrenagens
+N = 5.6;            % relacao de reducao das engrenagens
+Jm = 1.1e-6;        % momento de inercia em torno do eixo do motor: Nms^2
+Ke = 6.3e-3;        % constante eletrica do motor: Vs/rad
+Km = 6.3e-3;        % constante mecanica do motor: Nm/A
+R = 0.6;            % resistencia eletrica do motor: ohm
+
+m = 1;              % massa do quadrirotor: kg
+g = 9.81;           % gravidade: m/s^2
+
+l = 0.24;           % distancia entre o centro de massa e rotorem: m
+b = 54.2e-6;        % coeficiente de empuxo: Ns^2
+d = 1.1e-6;         % coeficiente de arrasto: Nms^2
+
+Ixx = 8.1e-3;       %tensor de momento de inercia x: kg.m^2
+Iyy = Ixx;          %tensor de momento de inercia y: kg.m^2
+Izz = 14.2e-3;      %tensor de momento de inercia z: kg.m^2
+
+A_matriz = [b b b b ;
+     0 l*b 0 -l*b;
+     -l*b 0 l*b 0;
+     d -d d -d];
+ 
+%% Parâmetros iniciais da questão 2
+s=tf('s');
+z=tf('z');
+
+
+
+Ts = 0.1;
+T5 = 2;
+Mp = 0.2;
+ksi = sqrt(1/((pi/(log(Mp)))^2 + 1));
+wn = 3/(ksi*T5);
+
+%% discretização das plantas
+Pd = [-ksi * wn + sqrt(1-ksi^2)*wn*1i
+      -ksi*wn - sqrt(1-ksi^2)*wn*1i];
+  
+Pd1 = Pd(1);  %primeiro polo
+Pdz1 = exp(Pd1 * Ts);
+
+Pd2 = Pd(2);  %segundo polo polo
+Pdz2 = exp(Pd2 * Ts);
+
+G_x = g/(s^2);
+G_y = -g/(s^2);
+G_z = 1/(s^2);
+
+Gx = c2d(G_x,Ts,'zoh');
+zpk(Gx);
+Gy = c2d(G_y,Ts,'zoh');
+zpk(Gy);
+Gz = c2d(G_z,Ts,'zoh');
+zpk(Gz);
+
+%% EQ lugar das raizes
+
+% 1+Klr*B(z)/A(z) = 0
+% 1 + [Kc*Nc/(z-1)*Dc]*[0.04905*(z+1)/(z-1)^2] = 180º(pi)
+
+Az = 1/((z-1)*(z-1)^2); % 3 polos em 1
+Bz = (z+1);             % 1 zero em -1
+
+pzmap(Az,Bz);
+
+Theta1 = atan2(0.2484,0.8241-1);
+Theta_1 = Theta1*180/pi;
+Theta2 = atan2(0.2484,0.8241+1);
+Theta_2 = Theta2*180/pi;
+
+FaseNCDC1 = -180+3*Theta_1-Theta_2;
+
+%% Compensando a fase
+
+Pe = real(Pd1)*10; %polo extra
+Pez = exp(Pe*Ts); %discretização
+
+Theta1 = atan2(0.2484,0.8241-1);
+Theta_1 = Theta1*180/pi;
+Theta2 = atan2(0.2484,0.8241+1);
+Theta_2 = Theta2*180/pi;
+Theta3 = atan2(0.2484,0.8241-(Pez));
+Theta_3 = Theta3*180/pi;
+
+FaseNCDC = -180+3*Theta_1-Theta_2+Theta_3;
+
+Pe = real(Pd1)*10; %polo extra
+Pez = exp(Pe*Ts); %discretização
+Aez = 1/(((z-1)*(z-1)^2)*(z-0.2231)); %três polos em 1 e um polo extra em 0.2231
+pzmap(Aez,Bz);
+
+NovosZeros = FaseNCDC/2; %fase a ser compensada por cada zero adicionado
+
+deltax = 0.2484/(tand(105.3064));
+za = 0.8241 - deltax; %valor dos zeros adicionais para compensar a fase
+
+%% Calcular o Klr x, y e z
+
+B = (Pdz1+1) * (Pdz1 - za)^2;
+A = (Pdz1-1)^3 * (Pdz1 -Pez);
+Klr = abs(A/B);
+Kcx = Klr/0.04905;
+Kcy = Klr/-0.04905;
+Kcz = Klr/0.005;
+
+Cx = zpk((Kcx*(z - za)^2)/((z-1)*(z-Pez)));         %controlador x
+Cy = zpk((Kcy*(z - za)^2)/((z-1)*(z-Pez)));         %controlador y
+Cz = zpk((Kcz*(z - za)^2)/((z-1)*(z-Pez)));         %controlador z
+
+%mapa polo-zero e lugar das raízes
+pzmap(Cx);
+rlocus(Cx);
+
+pzmap(Cy);
+rlocus(Cy);
+
+pzmap(Cz);
+rlocus(Cz);
+
+mfx = feedback(Cx*Gx,1);                 %malha fechada x
+step(mfx);
+rlocus(mfx);
+pzmap(mfx);
+
+mfy = feedback(Cy*Gy,1);                 %malha fechada y
+step(mfy);
+rlocus(mfy);
+pzmap(mfy);
+
+mfz = feedback(Cz*Gz,1);                 %malha fechada z
+step(mfz);
+rlocus(mfz);
+pzmap(mfz);
+
+%% Filtro
+
+Fr1 = ((0.154*z)*((z-0.9244)))/(((z-0.8921)^2))
+mffx = Fr1*mfx;
+mffy = Fr1*mfy;
+mffz = Fr1*mfz;
+
+step(mffx/Cx,mffy/Cy,mffz/Cz); %Sinal de controle dos três sistemas
+title('Sinal de Controle');
+legend('X','Y','Z');
